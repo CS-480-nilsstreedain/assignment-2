@@ -1,6 +1,5 @@
 # Assignment 2
-**Due by 11:59pm on Monday, 5/13/2024**<br/>
-**Demo due by 11:59pm on Monday, 5/27/2024**
+**Due by 10:00pm on Tuesday, 5/13/2025**<br/>
 
 In this assignment we'll work on a building parser for a small subset of the language Python.  In particular, we'll use the widely-used parser generator [Bison](https://www.gnu.org/software/bison/) to implement a parser that, when combined with the scanner we wrote in assignment 1, will implement a [syntax-directed translation scheme](https://en.wikipedia.org/wiki/Syntax-directed_translation) where the parser itself directly generates C target code from Python source code.
 
