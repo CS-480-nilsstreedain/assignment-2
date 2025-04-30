@@ -138,11 +138,11 @@ There are some simple Python programs you may use for testing your parser includ
 
 ## Submission
 
-We'll be using GitHub Classroom for this assignment, and you will submit your assignment via GitHub.  Make sure your completed files are committed and pushed by the assignment's deadline to the main branch of the GitHub repo that was created for you by GitHub Classroom.  A good way to check whether your files are safely submitted is to look at the main branch your assignment repo on the github.com website (i.e. https://github.com/osu-cs480-sp24/assignment-2-YourGitHubUsername/). If your changes show up there, you can consider your files submitted.
+We'll be using GitHub Classroom for this assignment, and you will submit your assignment via GitHub.  Make sure your completed files are committed and pushed by the assignment's deadline to the main branch of the GitHub repo that was created for you by GitHub Classroom.  A good way to check whether your files are safely submitted is to look at the main branch your assignment repo on the github.com website (i.e. https://github.com/osu-cs480-sp25/assignment-2-YourGitHubUsername/). If your changes show up there, you can consider your files submitted.
 
 ## Grading criteria
 
-The TAs will grade your assignment by compiling and running it on one of the ENGR servers, e.g. `flip.engr.oregonstate.edu`, so you should make sure your code works as expected there.  `bison` and `flex` are installed on the ENGR servers.  If your code does not compile and run on the ENGR servers, the TAs will deduct at least 25 points from your score.
+The assignment will be graded by **compiling and running it on one of the ENGR servers**, e.g. `flip.engr.oregonstate.edu`, so you should make sure your code works as expected there. `bison` and `flex` is already installed on the ENGR servers.  **A submission that does not compile and run on the ENGR servers will not be graded.**
 
 This assignment is worth 100 points total, broken down as follows:
   * 45 points: Parser implements a grammar that correctly models the subset of Python described above.
