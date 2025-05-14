@@ -1,6 +1,10 @@
 %{
+#include "parser.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+extern YYSTYPE yylval;
 
 /*
  * Set up a simplified stack to track indentation level as described in the
@@ -15,6 +19,9 @@ void indent_stack_push(int);
 void indent_stack_pop();
 int indent_stack_top();
 int indent_stack_isempty();
+
+/* Use a simple queue for DEDENT tokens */
+static int pending_dedents = 0;
 %}
 
 %option noyywrap
@@ -36,35 +43,37 @@ int indent_stack_isempty();
      * indentation behavior) if they're combined in a single line.  For the
      * purposes of this project, that's OK.
      */
-    if (indent_stack_top() < yyleng) {
+    int lvl = yyleng;
+    if (indent_stack_top() < lvl) {
         /*
          * If the current indentation level is greater than the previous indentation
          * level (stored at the top of the stack), then emit an INDENT and push the
          * new indentation level onto the stack.
          */
-        printf("INDENT\n");
-        indent_stack_push(yyleng);
-    } else {
+        indent_stack_push(lvl);
+        return INDENT;
+    } else if (indent_stack_top() > lvl) {
         /*
          * If the current indentation level is less than the previous indentation
          * level, pop indentation levels off the stack until the top is equal to
          * the current indentation level.  Emit a DEDENT for each element popped
          * from the stack.
          */
-        while (!indent_stack_isempty() && indent_stack_top() != yyleng) {
+        while (!indent_stack_isempty() && indent_stack_top() > lvl) {
             indent_stack_pop();
-            printf("DEDENT\n");
+            pending_dedents++;
         }
-
+        
         /*
          * If we popped everything off the stack, that means the current
          * indentation level didn't match any on the stack, which is an indentation
          * error.
          */
-        if (indent_stack_isempty()) {
+        if (indent_stack_top() != lvl)
             fprintf(stderr, "Error: Incorrect indentation on line %d\n", yylineno);
-            return 1;
-        }
+            
+        pending_dedents--;
+        return DEDENT;
     }
 }
 
@@ -76,20 +85,31 @@ int indent_stack_isempty();
      * matching this token (i.e. the one at the beginning of the line) is also
      * applied.
      */
-    while (indent_stack_top() != 0) {
-        indent_stack_pop();
-        printf("DEDENT\n");
+    if (indent_stack_top() > 0) {
+        while (indent_stack_top() > 0) {
+            indent_stack_pop();
+            pending_dedents++;
+        }
+        
+        YY_BUFFER_STATE state = YY_CURRENT_BUFFER;
+        int pos = state->yy_buf_pos - state->yy_ch_buf;
+        
+        for (int i = yyleng - 1; i >= 0; i--)
+            unput(yytext[i]);
+        
+        pending_dedents--;
+        return DEDENT;
     }
     REJECT;
 }
 
 \r?\n {
-  /*
-   * This rule will apply only to endlines that come after a statement.
-   * Endlines associated with empty lines and comments are handled above.
-   * This rule handles both Unix-style and Windows-style line endings.
-   */
-  printf("NEWLINE\n");
+    /*
+     * This rule will apply only to endlines that come after a statement.
+     * Endlines associated with empty lines and comments are handled above.
+     * This rule handles both Unix-style and Windows-style line endings.
+     */
+    return NEWLINE;
 }
 
 <<EOF>> {
@@ -97,64 +117,77 @@ int indent_stack_isempty();
      * If we reach the end of the file, pop all indentation levels off the stack
      * and emit a DEDENT for each one.
      */
-    while(indent_stack_top() != 0) {
-        indent_stack_pop();
-        printf("DEDENT\n");
+    if (pending_dedents > 0) {
+        pending_dedents--;
+        return DEDENT;
+    } else if (_indent_stack_top > 0) {
+        pending_dedents = _indent_stack_top;
+        _indent_stack_top--;
+        pending_dedents--;
+        return DEDENT;
     }
-    yyterminate();
+    return 0;
 }
 
 [ \t]  /* Ignore spaces that haven't been handled above. */
 
-"and"       printf("AND\t\t%s\n", yytext);
-"break"     printf("BREAK\t\t%s\n", yytext);
-"def"       printf("DEF\t\t%s\n", yytext);
-"elif"      printf("ELIF\t\t%s\n", yytext);
-"else"      printf("ELSE\t\t%s\n", yytext);
-"for"       printf("FOR\t\t%s\n", yytext);
-"if"        printf("IF\t\t%s\n", yytext);
-"not"       printf("NOT\t\t%s\n", yytext);
-"or"        printf("OR\t\t%s\n", yytext);
-"return"    printf("RETURN\t\t%s\n", yytext);
-"while"     printf("WHILE\t\t%s\n", yytext);
-"True"      printf("BOOLEAN\t\t%d\n", 1);
-"False"     printf("BOOLEAN\t\t%d\n", 0);
+. {
+    if (pending_dedents > 0) {
+        pending_dedents--;
+        unput(yytext[0]);
+        return DEDENT;
+    }
+    REJECT;
+}
+
+"and"       return AND;
+"break"     return BREAK;
+"elif"      return ELIF;
+"else"      return ELSE;
+"if"        return IF;
+"not"       return NOT;
+"or"        return OR;
+"while"     return WHILE;
+"True"      { yylval.int_val = 1;  return BOOLEAN; }
+"False"     { yylval.int_val = 0;  return BOOLEAN; }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     /*
      * This rule handling identifiers must come after all the keyword rules above,
      * since each keyword would otherwise be treated as a valid identifier.
      */
-    printf("IDENTIFIER\t%s\n", yytext);
+    yylval.string = strdup(yytext);
+    return IDENTIFIER;
 }
 
 [0-9]*"."[0-9]+ {
-    printf("FLOAT\t\t%f\n", atof(yytext));
+    yylval.float_val = atof(yytext);
+    return FLOAT;
 }
 
 [0-9]+ {
-    printf("INTEGER\t\t%d\n", atoi(yytext));
+    yylval.int_val = atoi(yytext);
+    return INTEGER;
 }
 
-"="     printf("ASSIGN\t\t%s\n", yytext);
-"+"     printf("PLUS\t\t%s\n", yytext);
-"-"     printf("MINUS\t\t%s\n", yytext);
-"*"     printf("TIMES\t\t%s\n", yytext);
-"/"     printf("DIVIDEDBY\t%s\n", yytext);
-"=="    printf("EQ\t\t%s\n", yytext);
-"!="    printf("NEQ\t\t%s\n", yytext);
-">"     printf("GT\t\t%s\n", yytext);
-">="    printf("GTE\t\t%s\n", yytext);
-"<"     printf("LT\t\t%s\n", yytext);
-"<="    printf("LTE\t\t%s\n", yytext);
-"("     printf("LPAREN\t\t%s\n", yytext);
-")"     printf("RPAREN\t\t%s\n", yytext);
-","     printf("COMMA\t\t%s\n", yytext);
-":"     printf("COLON\t\t%s\n", yytext);
+"="     return ASSIGN;
+"+"     return PLUS;
+"-"     return MINUS;
+"*"     return TIMES;
+"/"     return DIVIDE;
+"=="    return EQ;
+"!="    return NEQ;
+">="    return GTE;
+">"     return GT;
+"<="    return LTE;
+"<"     return LT;
+"("     return LPAREN;
+")"     return RPAREN;
+","     return COMMA;
+":"     return COLON;
 
 . {
     fprintf(stderr, "Unrecognized token on line %d: %s\n", yylineno, yytext);
-    return 1;
 }
 
 %%
@@ -197,8 +230,4 @@ int indent_stack_top() {
  */
 int indent_stack_isempty() {
     return _indent_stack_top < 0;
-}
-
-int main() {
-    return yylex();
 }
