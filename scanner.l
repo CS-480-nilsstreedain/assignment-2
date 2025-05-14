@@ -1,8 +1,11 @@
 %{
-#include "parser.h"
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include "parser.h"
 
 extern YYSTYPE yylval;
 

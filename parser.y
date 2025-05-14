@@ -1,8 +1,10 @@
 %{
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 int yylex(void);
 extern int yylineno;
@@ -44,12 +46,13 @@ void add_var(const char *n) {
 %token EQ NEQ GT GTE LT LTE
 %token LPAREN RPAREN COMMA
 
-%right NOT UMINUS
-%left OR
-%left AND
+%left    OR
+%left    AND
+%right   NOT
 %nonassoc EQ NEQ GT GTE LT LTE
-%left PLUS MINUS
-%left TIMES DIVIDE
+%left    PLUS MINUS
+%left    TIMES DIVIDE
+%right   UMINUS
 
 %type <string> program stmt_list stmt assign_stmt if_stmt elif_list else_opt while_stmt break_stmt expr indented_stmt_list
 
