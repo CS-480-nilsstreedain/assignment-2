@@ -1,10 +1,10 @@
-all: scan
+all: parse
 
 scan: scanner.c
-	gcc --std=c99 scanner.c -o scan
+	gcc --std=gnu99 scanner.c -o scan
 
 parse: parser.c scanner.c
-	gcc --std=c99 parser.c scanner.c -o parse
+	gcc --std=gnu99 parser.c scanner.c -o parse
 
 scanner.c: scanner.l
 	flex -o scanner.c scanner.l
